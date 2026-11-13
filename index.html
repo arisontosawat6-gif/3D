@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Print Quote Pro - ระบบคำนวณราคาปริ้น 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            transition: transform 0.15s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 999px;
+        }
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+        }
+        .preset-active {
+            border-color: #38bdf8 !important;
+            background: rgba(56, 189, 248, 0.15) !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+
+    <!-- Navbar -->
+    <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-30 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white">3D Print Quote <span class="text-sky-400">Pro</span></h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">ระบบคำนวณต้นทุนและใบเสนอราคาปริ้น 3D</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="resetDefaults()" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition">
+                    รีเซ็ตค่าเริ่มต้น
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Left Column: Inputs (7 cols) -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- 1. Material Presets -->
+                <section class="glass-card rounded-2xl p-5 shadow-xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-semibold uppercase tracking-wider text-sky-400 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                            1. เลือกประเภทวัสดุ (ตัวคูณความเสี่ยง)
+                        </h2>
+                        <span class="text-xs text-slate-400">ไม่กระทบราคาเส้นที่ตั้งไว้</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5" id="presetContainer">
+                        <button type="button" onclick="selectPreset('PLA', 2.5, this)" class="preset-btn preset-active text-left p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:border-slate-500 transition">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-sm text-white">PLA / PLA+</span>
+                                <span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300">2.5x</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">งานทั่วไป โมเดลโชว์</p>
+                        </button>
+                        <button type="button" onclick="selectPreset('PETG', 2.8, this)" class="preset-btn text-left p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:border-slate-500 transition">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-sm text-white">PETG</span>
+                                <span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">2.8x</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">เหนียว ทนแดด ทนน้ำ</p>
+                        </button>
+                        <button type="button" onclick="selectPreset('ABS / ASA', 3.5, this)" class="preset-btn text-left p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:border-slate-500 transition">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-sm text-white">ABS / ASA</span>
+                                <span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">3.5x</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">ทนความร้อนสูง งานช่าง</p>
+                        </button>
+                        <button type="button" onclick="selectPreset('CF / Nylon', 4.0, this)" class="preset-btn text-left p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:border-slate-500 transition">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-sm text-white">CF / Nylon</span>
+                                <span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">4.0x</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">งานวิศวกรรม ปริ้นยาก</p>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- 2. Slicer Data & Filament Price -->
+                <section class="glass-card rounded-2xl p-5 shadow-xl space-y-5">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-sky-400 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                        2. ข้อมูลจากโปรแกรม Slicer & ราคาเส้น
+                    </h2>
+
+                    <!-- Job Name & Quantity -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs text-slate-400 mb-1">ชื่อชิ้นงาน / รายละเอียด</label>
+                            <input type="text" id="partName" value="ชิ้นงานปริ้น 3D" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-400" oninput="calculate()">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">จำนวน (ชิ้น)</label>
+                            <div class="flex items-center bg-slate-900/90 border border-slate-700 rounded-xl overflow-hidden">
+                                <button type="button" onclick="adjustValue('quantity', -1, 1)" class="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">-</button>
+                                <input type="number" id="quantity" value="1" min="1" class="w-full bg-transparent text-center text-sm font-semibold text-white focus:outline-none" oninput="calculate()">
+                                <button type="button" onclick="adjustValue('quantity', 1, 1)" class="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weight -->
+                    <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-medium text-slate-200">น้ำหนักเส้นที่ใช้รวม Support (กรัม)</label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="weightGrams" value="150" min="1" max="5000" class="w-24 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1 text-right text-sm font-bold text-sky-400 focus:outline-none focus:border-sky-400" oninput="syncSlider('weightGrams', 'weightSlider')">
+                                <span class="text-xs text-slate-400">g</span>
+                            </div>
+                        </div>
+                        <input type="range" id="weightSlider" min="1" max="1000" value="150" oninput="syncInput('weightSlider', 'weightGrams')">
+                    </div>
+
+                    <!-- Custom Filament Price -->
+                    <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                        <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                            <label class="text-sm font-medium text-slate-200">ราคาเส้นพลาสติก (บาท / 1 กก.)</label>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="adjustValue('filamentPrice', -50, 100)" class="px-2 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700">-50</button>
+                                <input type="number" id="filamentPrice" value="550" min="100" max="10000" step="10" class="w-24 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1 text-right text-sm font-bold text-emerald-400 focus:outline-none focus:border-emerald-400" oninput="syncSlider('filamentPrice', 'filamentPriceSlider')">
+                                <button type="button" onclick="adjustValue('filamentPrice', 50, 100)" class="px-2 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700">+50</button>
+                                <span class="text-xs text-slate-400">฿</span>
+                            </div>
+                        </div>
+                        <input type="range" id="filamentPriceSlider" min="200" max="3000" step="10" value="550" oninput="syncInput('filamentPriceSlider', 'filamentPrice')">
+                        <div class="flex flex-wrap gap-1.5 mt-3">
+                            <span class="text-[11px] text-slate-400 self-center mr-1">เรทราคาด่วน:</span>
+                            <button type="button" onclick="setFilamentPrice(450)" class="px-2 py-0.5 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">450฿</button>
+                            <button type="button" onclick="setFilamentPrice(550)" class="px-2 py-0.5 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">550฿</button>
+                            <button type="button" onclick="setFilamentPrice(650)" class="px-2 py-0.5 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">650฿</button>
+                            <button type="button" onclick="setFilamentPrice(850)" class="px-2 py-0.5 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">850฿</button>
+                            <button type="button" onclick="setFilamentPrice(1200)" class="px-2 py-0.5 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">1,200฿</button>
+                        </div>
+                    </div>
+
+                    <!-- Print Time -->
+                    <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                        <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                            <label class="text-sm font-medium text-slate-200">เวลาที่ใช้ปริ้นทั้งหมด</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="printHours" value="6" min="0" max="500" class="w-16 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm font-bold text-sky-400 focus:outline-none focus:border-sky-400" oninput="calculate()">
+                                    <span class="text-xs text-slate-400">ชม.</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="printMinutes" value="30" min="0" max="59" class="w-16 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm font-bold text-sky-400 focus:outline-none focus:border-sky-400" oninput="calculate()">
+                                    <span class="text-xs text-slate-400">นาที</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. Operating Costs & Markup -->
+                <section class="glass-card rounded-2xl p-5 shadow-xl space-y-4">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-sky-400 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                        3. ต้นทุนแฝง & ตัวคูณกำไร
+                    </h2>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">ค่าเสื่อมเครื่อง (บาท/ชม.)</label>
+                            <input type="number" id="depreciationRate" value="15" min="0" step="1" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-400" oninput="calculate()">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">ค่าไฟเฉลี่ย (บาท/ชม.)</label>
+                            <input type="number" id="electricityRate" value="0.75" min="0" step="0.05" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-400" oninput="calculate()">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">ค่าแรงเตรียมไฟล์/แกะ Support (บาท)</label>
+                            <input type="number" id="laborCost" value="50" min="0" step="10" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-400" oninput="calculate()">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">ค่าออกแบบ / แก้ไขไฟล์ 3D (บาท)</label>
+                            <input type="number" id="designFee" value="0" min="0" step="50" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-400" oninput="calculate()">
+                        </div>
+                    </div>
+
+                    <!-- Markup Multiplier -->
+                    <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-medium text-slate-200">ตัวคูณกำไรและความเสี่ยง (Markup)</label>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="markupMultiplier" value="2.5" min="1" max="10" step="0.1" class="w-20 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1 text-right text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-400" oninput="syncSlider('markupMultiplier', 'markupSlider')">
+                                <span class="text-xs text-slate-400">เท่า</span>
+                            </div>
+                        </div>
+                        <input type="range" id="markupSlider" min="1.2" max="6.0" step="0.1" value="2.5" oninput="syncInput('markupSlider', 'markupMultiplier')">
+                    </div>
+
+                    <!-- Minimum Charge & Rounding -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">ราคาขั้นต่ำต่อรายการ (บาท)</label>
+                            <input type="number" id="minCharge" value="150" min="0" step="10" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-400" oninput="calculate()">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">การปัดเศษราคาขาย</label>
+                            <select id="roundingRule" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-400" onchange="calculate()">
+                                <option value="1">ไม่ปัดเศษ (ตามจริง)</option>
+                                <option value="5">ปัดขึ้นหลัก 5 บาท</option>
+                                <option value="10" selected>ปัดขึ้นหลัก 10 บาท</option>
+                                <option value="50">ปัดขึ้นหลัก 50 บาท</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Summary & Quotation (5 cols) -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="glass-card rounded-2xl p-6 shadow-2xl border-sky-500/30 sticky top-20 space-y-6">
+                    
+                    <!-- Final Price Display -->
+                    <div class="text-center bg-gradient-to-b from-slate-800/90 to-slate-900/90 p-6 rounded-2xl border border-slate-700/80 relative overflow-hidden">
+                        <span id="minChargeBadge" class="hidden absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            ปรับใช้ราคาขั้นต่ำ
+                        </span>
+                        <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">ราคาเสนอขายสุทธิ</p>
+                        <div class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-400 my-1">
+                            <span id="finalPriceDisplay">0</span> <span class="text-xl font-bold text-slate-300">บาท</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1" id="perUnitPriceDisplay">เฉลี่ยชิ้นละ 0 บาท (จำนวน 1 ชิ้น)</p>
+                    </div>
+
+                    <!-- Profit & Margin Pills -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
+                            <p class="text-xs text-slate-400">ต้นทุนรวมทั้งหมด</p>
+                            <p class="text-lg font-bold text-slate-200 mt-0.5"><span id="totalCostDisplay">0</span> ฿</p>
+                        </div>
+                        <div class="bg-emerald-950/30 p-3.5 rounded-xl border border-emerald-800/40">
+                            <p class="text-xs text-emerald-400">กำไรสุทธิโดยประมาณ</p>
+                            <p class="text-lg font-bold text-emerald-400 mt-0.5">+<span id="netProfitDisplay">0</span> ฿ <span class="text-xs font-normal">(<span id="marginPercentDisplay">0</span>%)</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Cost Breakdown Bar -->
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-400 mb-1.5">
+                            <span>โครงสร้างราคาขาย</span>
+                            <span id="selectedMaterialLabel" class="text-sky-400 font-medium">วัสดุ: PLA</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden flex">
+                            <div id="barMaterial" class="bg-sky-400 transition-all duration-300" style="width: 25%" title="ค่าวัสดุ"></div>
+                            <div id="barMachine" class="bg-indigo-400 transition-all duration-300" style="width: 25%" title="ค่าเครื่องและค่าไฟ"></div>
+                            <div id="barLabor" class="bg-amber-400 transition-all duration-300" style="width: 15%" title="ค่าแรงและออกแบบ"></div>
+                            <div id="barProfit" class="bg-emerald-400 transition-all duration-300" style="width: 35%" title="กำไรและเผื่อเสี่ยง"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-y-1.5 gap-x-4 mt-3 text-xs">
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center gap-1.5 text-slate-300"><span class="w-2.5 h-2.5 rounded-sm bg-sky-400"></span>ค่าวัสดุ</span>
+                                <span class="font-medium text-white"><span id="costMaterialDisplay">0</span> ฿</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center gap-1.5 text-slate-300"><span class="w-2.5 h-2.5 rounded-sm bg-indigo-400"></span>ค่าเครื่อง+ไฟ</span>
+                                <span class="font-medium text-white"><span id="costMachineDisplay">0</span> ฿</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center gap-1.5 text-slate-300"><span class="w-2.5 h-2.5 rounded-sm bg-amber-400"></span>ค่าแรง+ออกแบบ</span>
+                                <span class="font-medium text-white"><span id="costLaborDisplay">0</span> ฿</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center gap-1.5 text-slate-300"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span>กำไร+เผื่อเสีย</span>
+                                <span class="font-medium text-emerald-400"><span id="costProfitDisplay">0</span> ฿</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <button type="button" onclick="addToOrderList()" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium border border-slate-600 transition flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            เพิ่มลงรายการรวม
+                        </button>
+                        <button type="button" onclick="copyQuotation()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white text-sm font-semibold shadow-lg shadow-sky-500/25 transition flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                            คัดลอกใบเสนอราคา
+                        </button>
+                    </div>
+
+                    <!-- Multi-item Order List -->
+                    <div id="orderListSection" class="hidden border-t border-slate-800 pt-4 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">รายการในออเดอร์ (<span id="orderCount">0</span>)</h3>
+                            <button type="button" onclick="clearOrderList()" class="text-xs text-rose-400 hover:text-rose-300">ล้างทั้งหมด</button>
+                        </div>
+                        <div id="orderItemsContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+                        <div class="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
+                            <span class="text-sm font-medium text-slate-300">ยอดรวมทั้งออเดอร์</span>
+                            <span class="text-lg font-bold text-emerald-400"><span id="orderGrandTotal">0</span> บาท</span>
+                        </div>
+                        <button type="button" onclick="copyFullOrderQuotation()" class="w-full py-2 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition">
+                            คัดลอกสรุปยอดรวมทุกชิ้นงานส่งลูกค้า
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-4 py-3 rounded-xl shadow-2xl border border-sky-500/40 text-sm font-medium transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="toastMessage">คัดลอกข้อความแล้ว</span>
+    </div>
+
+    <script>
+        let currentMaterial = 'PLA';
+        let orderItems = [];
+        let latestCalculation = {};
+
+        function selectPreset(materialName, markup, btnElement) {
+            currentMaterial = materialName;
+            document.getElementById('selectedMaterialLabel').textContent = 'วัสดุ: ' + materialName;
+
+            // Update markup only (keep custom filament price untouched)
+            document.getElementById('markupMultiplier').value = markup;
+            document.getElementById('markupSlider').value = markup;
+
+            // Update active button styling
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('preset-active'));
+            if (btnElement) btnElement.classList.add('preset-active');
+
+            calculate();
+        }
+
+        function setFilamentPrice(price) {
+            document.getElementById('filamentPrice').value = price;
+            document.getElementById('filamentPriceSlider').value = price;
+            calculate();
+        }
+
+        function adjustValue(inputId, delta, minVal) {
+            const el = document.getElementById(inputId);
+            let val = parseFloat(el.value) || 0;
+            val = Math.max(minVal, val + delta);
+            el.value = val;
+            if (inputId === 'filamentPrice') {
+                document.getElementById('filamentPriceSlider').value = Math.min(3000, val);
+            }
+            calculate();
+        }
+
+        function syncSlider(inputId, sliderId) {
+            const val = parseFloat(document.getElementById(inputId).value) || 0;
+            document.getElementById(sliderId).value = val;
+            calculate();
+        }
+
+        function syncInput(sliderId, inputId) {
+            const val = parseFloat(document.getElementById(sliderId).value) || 0;
+            document.getElementById(inputId).value = val;
+            calculate();
+        }
+
+        function calculate() {
+            const partName = document.getElementById('partName').value.trim() || 'ชิ้นงานปริ้น 3D';
+            const quantity = Math.max(1, parseInt(document.getElementById('quantity').value) || 1);
+            const weightGrams = Math.max(0, parseFloat(document.getElementById('weightGrams').value) || 0);
+            const filamentPrice = Math.max(0, parseFloat(document.getElementById('filamentPrice').value) || 0);
+            const printHours = Math.max(0, parseFloat(document.getElementById('printHours').value) || 0);
+            const printMinutes = Math.max(0, parseFloat(document.getElementById('printMinutes').value) || 0);
+            const depreciationRate = Math.max(0, parseFloat(document.getElementById('depreciationRate').value) || 0);
+            const electricityRate = Math.max(0, parseFloat(document.getElementById('electricityRate').value) || 0);
+            const laborCost = Math.max(0, parseFloat(document.getElementById('laborCost').value) || 0);
+            const designFee = Math.max(0, parseFloat(document.getElementById('designFee').value) || 0);
+            const markup = Math.max(1, parseFloat(document.getElementById('markupMultiplier').value) || 1);
+            const minCharge = Math.max(0, parseFloat(document.getElementById('minCharge').value) || 0);
+            const rounding = parseInt(document.getElementById('roundingRule').value) || 1;
+
+            const totalHours = printHours + (printMinutes / 60);
+
+            // Single unit print cost
+            const unitMaterialCost = (weightGrams / 1000) * filamentPrice;
+            const unitMachineCost = totalHours * (depreciationRate + electricityRate);
+            const unitPrintBaseCost = unitMaterialCost + unitMachineCost + laborCost;
+
+            // Total for quantity + one-time design fee
+            const totalMaterialCost = unitMaterialCost * quantity;
+            const totalMachineCost = unitMachineCost * quantity;
+            const totalLaborAndDesign = (laborCost * quantity) + designFee;
+            const totalBaseCost = totalMaterialCost + totalMachineCost + totalLaborAndDesign;
+
+            // Selling price before minimum charge & rounding
+            let rawSellingPrice = (unitPrintBaseCost * markup * quantity) + designFee;
+            let isMinChargeApplied = false;
+
+            if (rawSellingPrice < minCharge) {
+                rawSellingPrice = minCharge;
+                isMinChargeApplied = true;
+            }
+
+            // Apply rounding up
+            const finalSellingPrice = Math.ceil(rawSellingPrice / rounding) * rounding;
+            const netProfit = finalSellingPrice - totalBaseCost;
+            const marginPercent = finalSellingPrice > 0 ? ((netProfit / finalSellingPrice) * 100) : 0;
+            const perUnitPrice = finalSellingPrice / quantity;
+
+            // Update UI Displays
+            document.getElementById('finalPriceDisplay').textContent = finalSellingPrice.toLocaleString('th-TH');
+            document.getElementById('perUnitPriceDisplay').textContent = `เฉลี่ยชิ้นละ ${Math.round(perUnitPrice).toLocaleString('th-TH')} บาท (จำนวน ${quantity} ชิ้น)`;
+            document.getElementById('totalCostDisplay').textContent = Math.round(totalBaseCost).toLocaleString('th-TH');
+            document.getElementById('netProfitDisplay').textContent = Math.round(netProfit).toLocaleString('th-TH');
+            document.getElementById('marginPercentDisplay').textContent = marginPercent.toFixed(0);
+
+            document.getElementById('costMaterialDisplay').textContent = Math.round(totalMaterialCost).toLocaleString('th-TH');
+            document.getElementById('costMachineDisplay').textContent = Math.round(totalMachineCost).toLocaleString('th-TH');
+            document.getElementById('costLaborDisplay').textContent = Math.round(totalLaborAndDesign).toLocaleString('th-TH');
+            document.getElementById('costProfitDisplay').textContent = Math.max(0, Math.round(netProfit)).toLocaleString('th-TH');
+
+            const minBadge = document.getElementById('minChargeBadge');
+            if (isMinChargeApplied) minBadge.classList.remove('hidden');
+            else minBadge.classList.add('hidden');
+
+            // Update Progress Bar Proportions
+            if (finalSellingPrice > 0) {
+                const pMat = (totalMaterialCost / finalSellingPrice) * 100;
+                const pMac = (totalMachineCost / finalSellingPrice) * 100;
+                const pLab = (totalLaborAndDesign / finalSellingPrice) * 100;
+                const pProf = Math.max(0, 100 - (pMat + pMac + pLab));
+
+                document.getElementById('barMaterial').style.width = `${pMat}%`;
+                document.getElementById('barMachine').style.width = `${pMac}%`;
+                document.getElementById('barLabor').style.width = `${pLab}%`;
+                document.getElementById('barProfit').style.width = `${pProf}%`;
+            }
+
+            latestCalculation = {
+                partName,
+                material: currentMaterial,
+                quantity,
+                weightGrams,
+                printHours,
+                printMinutes,
+                designFee,
+                finalSellingPrice,
+                perUnitPrice: Math.round(perUnitPrice)
+            };
+        }
+
+        function addToOrderList() {
+            orderItems.push({ ...latestCalculation, id: Date.now() });
+            renderOrderList();
+            showToast('เพิ่มชิ้นงานลงในรายการออเดอร์แล้ว');
+        }
+
+        function removeOrderItem(id) {
+            orderItems = orderItems.filter(item => item.id !== id);
+            renderOrderList();
+        }
+
+        function clearOrderList() {
+            orderItems = [];
+            renderOrderList();
+        }
+
+        function renderOrderList() {
+            const section = document.getElementById('orderListSection');
+            const container = document.getElementById('orderItemsContainer');
+            const countEl = document.getElementById('orderCount');
+            const grandTotalEl = document.getElementById('orderGrandTotal');
+
+            if (orderItems.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            countEl.textContent = orderItems.length;
+
+            let grandTotal = 0;
+            container.innerHTML = orderItems.map((item, idx) => {
+                grandTotal += item.finalSellingPrice;
+                return `
+                    <div class="flex justify-between items-center bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-800 text-xs">
+                        <div>
+                            <p class="font-semibold text-white">${idx + 1}. ${item.partName} <span class="text-sky-400">(${item.material})</span></p>
+                            <p class="text-slate-400">จำนวน ${item.quantity} ชิ้น • ${item.weightGrams}g • ${item.printHours}ชม. ${item.printMinutes}น.</p>
+                        </div>
+                        <div class="flex items-center gap-2.5">
+                            <span class="font-bold text-emerald-400">${item.finalSellingPrice.toLocaleString('th-TH')} ฿</span>
+                            <button type="button" onclick="removeOrderItem(${item.id})" class="text-slate-500 hover:text-rose-400">✕</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            grandTotalEl.textContent = grandTotal.toLocaleString('th-TH');
+        }
+
+        function copyQuotation() {
+            const c = latestCalculation;
+            const text = [
+                `📋 ใบเสนอราคาบริการปริ้น 3D`,
+                `• ชิ้นงาน: ${c.partName}`,
+                `• วัสดุ: ${c.material}`,
+                `• จำนวน: ${c.quantity} ชิ้น`,
+                `• เวลาผลิตโดยประมาณ: ${c.printHours} ชม. ${c.printMinutes} นาที`,
+                c.designFee > 0 ? `• รวมค่าบริการออกแบบ/แก้ไขไฟล์ 3D แล้ว` : null,
+                `💰 ยอดรวมสุทธิ: ${c.finalSellingPrice.toLocaleString('th-TH')} บาท`
+            ].filter(Boolean).join('\n');
+
+            copyToClipboard(text, 'คัดลอกใบเสนอราคาพร้อมส่งให้ลูกค้าแล้ว!');
+        }
+
+        function copyFullOrderQuotation() {
+            if (orderItems.length === 0) return;
+            let grandTotal = 0;
+            const lines = [`📋 สรุปใบเสนอราคาบริการปริ้น 3D (${orderItems.length} รายการ)`];
+            orderItems.forEach((item, i) => {
+                grandTotal += item.finalSellingPrice;
+                lines.push(`${i + 1}. ${item.partName} (${item.material}) x${item.quantity} ชิ้น = ${item.finalSellingPrice.toLocaleString('th-TH')} บาท`);
+            });
+            lines.push(`------------------------`);
+            lines.push(`💰 ยอดรวมสุทธิ: ${grandTotal.toLocaleString('th-TH')} บาท`);
+
+            copyToClipboard(lines.join('\n'), 'คัดลอกสรุปยอดรวมทั้งออเดอร์แล้ว!');
+        }
+
+        function copyToClipboard(text, message) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(message);
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast(message);
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2600);
+        }
+
+        function resetDefaults() {
+            document.getElementById('partName').value = 'ชิ้นงานปริ้น 3D';
+            document.getElementById('quantity').value = 1;
+            document.getElementById('weightGrams').value = 150;
+            document.getElementById('weightSlider').value = 150;
+            document.getElementById('filamentPrice').value = 550;
+            document.getElementById('filamentPriceSlider').value = 550;
+            document.getElementById('printHours').value = 6;
+            document.getElementById('printMinutes').value = 30;
+            document.getElementById('depreciationRate').value = 15;
+            document.getElementById('electricityRate').value = 0.75;
+            document.getElementById('laborCost').value = 50;
+            document.getElementById('designFee').value = 0;
+            document.getElementById('minCharge').value = 150;
+            document.getElementById('roundingRule').value = 10;
+
+            const firstPreset = document.querySelector('.preset-btn');
+            selectPreset('PLA', 2.5, firstPreset);
+            showToast('รีเซ็ตค่าเริ่มต้นเรียบร้อย');
+        }
+
+        // Initial calculation
+        calculate();
+    </script>
+</body>
+</html>
